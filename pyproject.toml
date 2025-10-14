@@ -1,22 +1,19 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+requires = ["setuptools>=61", "wheel"] 
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "osm-integration-haystack"
-version = '0.1.15'
+version = '0.1.10'
 description = "A Haystack component integrating Overpass API for OpenStreetMap"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Giovanni Alzetta", email = "giovannialzetta@gmail.com"},
+    {name = "Wyatt \"Huaye\" Wei", email = "h.w_wyatt@protonmail.com"},
 ]
 classifiers = [
     "Programming Language :: Python :: 3",  
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
@@ -24,10 +21,10 @@ classifiers = [
 dynamic = ["dependencies"]
 
 [project.urls]
-Homepage = "https://github.com/GivAlz/duckduckgo_api_websearch"
+Homepage = "https://github.com/grexrr/osm-integration-haystack"
 
 [tool.setuptools.packages.find]
-include = ["duckduckgo_api_haystack*"]
+include = ["osm_integration_haystack*"] 
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
