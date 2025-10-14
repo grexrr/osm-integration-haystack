@@ -1,0 +1,73 @@
+from typing import List, Tuple
+import json
+import requests
+
+class OverpassClient:
+
+    _OSM_ENDPOINT = "https://overpass-api.de/api/interpreter"
+    _TYPES = ['node', 'way', 'relation']
+    
+    def __init__(self, timeout:int = 90) -> None:
+        self.timeout = timeout
+  
+    
+    def fetch_osm_data(self, lat:float, lon:float, radius:float, tags:List[Tuple[str]], osm_types:str="node"):
+        
+        query = self._build_geojson_query(lat, lon, radius, tags, osm_types)
+        res = requests.post(self._OSM_ENDPOINT, data=query)
+
+        print(f"Status: {res.status_code}")
+        print(f"Response: {res.text[:200]}...")
+
+        return res.json()
+    
+
+    def _build_geojson_query(self, lat:float, lon:float, radius:float, tags:List[Tuple[str]], osm_types:str="node"):
+        
+        # s, w, n, e = bbox[0], bbox[1], bbox[2], bbox[3]
+        # bbox_query = f"({s},{w},{n},{e})"
+
+        queries = []
+        for osm_type in osm_types:
+            for tag in tags:
+                str1 = tag[0]
+                str2 = tag[1] if len(tag) > 1 else None
+                tag_str = f'["{str1}"="{str2}"]' if str2 else f'["{str1}"]'
+                queries.append(f"{osm_type}{tag_str}(around:{radius},{lat},{lon});")
+        
+        query_body = "\n".join(queries)
+
+        res = f"""
+        [out:json]
+        [timeout:{self.timeout}];
+        (
+            {query_body}
+        );
+        out geom;
+        """
+
+        print("Current Query:")
+        print(res)
+        
+        return res
+
+    def _save_file(self):
+        return
+
+if __name__ == "__main__":
+    client = OverpassClient()
+    lat, lon, radius = 51.898403, -8.473978, 200
+
+    tags = [
+    ("shop", "alcohol"),
+    ("service", "yard"),
+    ("tourism",),
+    ("amenity",)
+    ]
+    
+    types = ["node", "relation", "way"]
+
+    data = client.fetch_osm_data(lat, lon, radius, tags, types)
+ 
+    with open("src/osm_integration_haystack/clients/test_output.json", "w") as f:
+        json.dump(data, f, indent=2)
