@@ -8,11 +8,12 @@ version = '0.1.10'
 description = "A Haystack component integrating Overpass API for OpenStreetMap"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "Apache-2.0"}
+license = {text = "MIT"}
 authors = [
     {name = "Wyatt \"Huaye\" Wei", email = "h.w_wyatt@protonmail.com"},
 ]
 classifiers = [
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",  
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -24,6 +25,7 @@ dynamic = ["dependencies"]
 Homepage = "https://github.com/grexrr/osm-integration-haystack"
 
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["osm_integration_haystack*"] 
 
 [tool.setuptools.dynamic]
