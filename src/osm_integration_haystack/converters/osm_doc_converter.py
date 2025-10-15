@@ -21,9 +21,9 @@
 #   "retrieved_at": "2025-10-14T..Z"
 # }
 
-from ast import Tuple
+from ast import List, Tuple
 from collections import Counter
-from typing import Dict
+from typing import Any, Dict
 import json
 
 
@@ -32,7 +32,7 @@ class OSM_Doc_Converter:
         self.raw = None
         self.raw_length = 0
         self.tag_freq = Counter()        
-        self.cleansed = None
+        self.cleansed = {}
 
     def read_json(self, data:Dict) -> None:
         try:
@@ -51,48 +51,60 @@ class OSM_Doc_Converter:
             raise Exception(f"[OSM_Doc_Converter] Error loading data: {e}")
         return self
     
-
     def clean_data(self) -> None:
+
         print("[OSM_Doc_Converter] Processing data cleaning.")
-        
-       
         for element in self.raw:
-            name_field = None
-            addr_field = None
-
-            if "name" not in element["tags"] and "amenity" not in element["tags"]:
-                continue 
-            
-            # process name_field
-            if "name" in element["tags"]:
-                name_str = element["tags"].pop("name")
-                if "amenity" in element["tags"]:
-                    amenity_str = element["tags"].pop("amenity")
-                    name_field = f"Name: {name_str} ({amenity_str}), "
-                else:
-                    name_field = f"Name: {name_str}, "
-                print(f"{name_field}")
-            elif "amenity" in element["tags"]:
-                amenity_str = element["tags"].pop("amenity")
-                name_field = f"Name: {amenity_str}, "
-                print(f"{name_field}")
-
-            # process addr_field
-            addr_items = []
-            for key in list(element["tags"].keys()):
-                if key.startswith("addr:"):
-                    addr_items.append(element["tags"].pop(key))
-
-            if addr_items:
-                addr_field = "Address: " + ", ".join(addr_items) + ", "
-                print(addr_field)
-
-            print(element["tags"])
-            print()
-
-
+            self._clean_element(element)
 
         return self
+
+    def _clean_element(self, element) -> None:
+        
+        if "type" not in element or "id" not in element or ("lat" or "lon") not in element:
+            return
+
+        if "name" not in element["tags"] and "amenity" not in element["tags"]:
+            return 
+        
+        result = {
+            "content": "",
+            "meta": {}
+        }
+
+        # ================ Processing Content ================ 
+        name_field = None
+        addr_field = None
+        
+        # process name_field
+        if "name" in element["tags"]:
+            name_str = element["tags"].pop("name")
+            if "amenity" in element["tags"]:
+                amenity_str = element["tags"].pop("amenity")
+                name_field = f"Name: {name_str} ({amenity_str}), "
+            else:
+                name_field = f"Name: {name_str}, "
+            print(f"{name_field}")
+        elif "amenity" in element["tags"]:
+            amenity_str = element["tags"].pop("amenity")
+            name_field = f"Name: {amenity_str}, "
+            print(f"{name_field}")
+
+        # process addr_field
+        addr_items = []
+        for key in list(element["tags"].keys()):
+            if key.startswith("addr:"):
+                addr_items.append(element["tags"].pop(key))
+
+        if addr_items:
+            addr_field = "Address: " + ", ".join(addr_items) + ", "
+            print(addr_field)
+
+        print(element["tags"])
+        print()
+
+        # ================ Processing Meta ================ 
+        self.cleansed[element["id"]] = result
 
     def get_raw(self) -> Dict:
         return self.raw
@@ -100,9 +112,12 @@ class OSM_Doc_Converter:
     def get_cleansed(self) -> Dict:
         return self.cleansed
 
-    def get_tag_freq(self) -> None:
+    def get_tag_freq(self, num:int=None) -> None:
         print("[OSM_Doc_Converter] Most common tags:")
-        print(self.tag_freq.most_common(20))
+        if not num:
+            print(self.tag_freq.most_common())
+        else:
+            print(self.tag_freq.most_common(num))
         return self.tag_freq
 
 if __name__ == "__main__":
@@ -124,7 +139,8 @@ if __name__ == "__main__":
 
     # start cleaning
     converter = OSM_Doc_Converter()
-    res = converter.read_json(data).clean_data()
+    res = converter.read_json(data).get_tag_freq()
+    # res = converter.read_json(data).clean_data()
     
     # result = converter.get_cleansed()
     # print(result['elements'][0])
