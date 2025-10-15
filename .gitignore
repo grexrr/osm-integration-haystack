@@ -184,4 +184,4 @@ plan.md
 plan_*.md
 plan_general.md
 plan_mvp.md
-test_output.json
+examples/test_output_json/*
