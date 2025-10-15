@@ -5,13 +5,13 @@ import requests
 class OverpassClient:
 
     _OSM_ENDPOINT = "https://overpass-api.de/api/interpreter"
-    _TYPES = ['node', 'way', 'relation']
+    _OSM_TYPES = ['node', 'way', 'relation']
     
     def __init__(self, timeout:int = 90) -> None:
         self.timeout = timeout
   
     
-    def fetch_osm_data(self, lat:float, lon:float, radius:float, tags:List[Tuple[str]], osm_types:str="node"):
+    def fetch_osm_data(self, lat: float, lon: float, radius: float, tags: List[Tuple[str]], osm_types: str = "node") -> dict:
         
         query = self._build_geojson_query(lat, lon, radius, tags, osm_types)
         res = requests.post(self._OSM_ENDPOINT, data=query)
@@ -22,11 +22,11 @@ class OverpassClient:
         return res.json()
     
 
-    def _build_geojson_query(self, lat:float, lon:float, radius:float, tags:List[Tuple[str]], osm_types:str="node"):
+    def _build_geojson_query(self, lat:float, lon:float, radius:float, tags:List[Tuple[str]], osm_types:str="node") -> str:
         
         # s, w, n, e = bbox[0], bbox[1], bbox[2], bbox[3]
         # bbox_query = f"({s},{w},{n},{e})"
-
+        # target_types = [osm_types] if osm_types else self._OSM_TYPES
         queries = []
         for osm_type in osm_types:
             for tag in tags:
@@ -51,7 +51,14 @@ class OverpassClient:
         
         return res
 
-    def _save_file(self):
+    def save_file(
+            self, 
+            data,
+            path:str ="src/osm_integration_haystack/clients/test_output.json",
+            mode = "w"
+            ):
+        with open(path, mode) as f:
+            json.dump(data, f, indent=2)
         return
 
 if __name__ == "__main__":
@@ -65,9 +72,7 @@ if __name__ == "__main__":
     ("amenity",)
     ]
     
-    types = ["node", "relation", "way"]
+    types = ["node"]
 
     data = client.fetch_osm_data(lat, lon, radius, tags, types)
- 
-    with open("src/osm_integration_haystack/clients/test_output.json", "w") as f:
-        json.dump(data, f, indent=2)
+    client.save_file(data)
