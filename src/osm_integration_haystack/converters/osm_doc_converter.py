@@ -22,6 +22,7 @@
 # }
 
 from ast import Tuple
+from collections import Counter
 from typing import Dict
 import json
 
@@ -29,57 +30,80 @@ import json
 class OSM_Doc_Converter:
     def __init__(self) -> None:
         self.raw = None
+        self.raw_length = 0
+        self.tag_freq = Counter()        
         self.cleansed = None
 
     def read_json(self, data:Dict) -> None:
         try:
-            print("Reading Raw OSM GeoJson...")
-            self.raw = data
-            n = len(data.get('elements', []))
-            print(f"[OSM_Doc_Converter] Loaded {n} entries.")
-            if n == 0:
-                print("[OSM_Doc_Converter] No entries found!")
+            print("[OSM_Doc_Converter] Reading Raw OSM GeoJson...")
+            
+            if elements := data['elements']:
+                self.raw = elements
+                self.raw_length = len(elements)
+                print(f"[OSM_Doc_Converter] Loaded {self.raw_length} entries.")
+            else:
+                raise Exception("[OSM_Doc_Converter] No 'elements' found in the data.")
+
+            self.tag_freq.update(f"{k}" for element in elements for k, _ in element.get("tags", {}).items())
+
         except Exception as e:
-            raise Exception(f"Error loading data: {e}")
+            raise Exception(f"[OSM_Doc_Converter] Error loading data: {e}")
         return self
     
-    def _observed_data(self, write=True) -> None:
-        print("[OSM_Doc_Converter] Processing data cleaning.")
-        
-        # name_field
-        entries_without_name = {}
-        count = 0
-        for element in self.raw["elements"]:
-            if name := element["tags"].get("name"):
-                print(name)
-            else:
-                count += 1
-                entries_without_name[count] = element
-        print(f"{count} entries without name!")
-
-        if write:
-            with open("/Users/grexrr/Documents/osm-integration-haystack/examples/test_output_json/temp_entries_without_name.json", "w") as f:
-                json.dump(entries_without_name, f, indent=2)
-
-        return self
 
     def clean_data(self) -> None:
         print("[OSM_Doc_Converter] Processing data cleaning.")
         
+       
+        for element in self.raw:
+            name_field = None
+            addr_field = None
 
-        self.cleansed = self.raw
+            if "name" not in element["tags"] and "amenity" not in element["tags"]:
+                continue 
+            
+            # process name_field
+            if "name" in element["tags"]:
+                name_str = element["tags"].pop("name")
+                if "amenity" in element["tags"]:
+                    amenity_str = element["tags"].pop("amenity")
+                    name_field = f"Name: {name_str} ({amenity_str}), "
+                else:
+                    name_field = f"Name: {name_str}, "
+                print(f"{name_field}")
+            elif "amenity" in element["tags"]:
+                amenity_str = element["tags"].pop("amenity")
+                name_field = f"Name: {amenity_str}, "
+                print(f"{name_field}")
+
+            # process addr_field
+            addr_items = []
+            for key in list(element["tags"].keys()):
+                if key.startswith("addr:"):
+                    addr_items.append(element["tags"].pop(key))
+
+            if addr_items:
+                addr_field = "Address: " + ", ".join(addr_items) + ", "
+                print(addr_field)
+
+            print(element["tags"])
+            print()
+
+
+
         return self
-
-    def set_user_location(self, lat: float, lon: float) ->  'OSM_Doc_Converter':
-            """设置用户查询位置"""
-            self.user_location = (lat, lon)
-            return self
 
     def get_raw(self) -> Dict:
         return self.raw
     
     def get_cleansed(self) -> Dict:
         return self.cleansed
+
+    def get_tag_freq(self) -> None:
+        print("[OSM_Doc_Converter] Most common tags:")
+        print(self.tag_freq.most_common(20))
+        return self.tag_freq
 
 if __name__ == "__main__":
 
@@ -100,7 +124,7 @@ if __name__ == "__main__":
 
     # start cleaning
     converter = OSM_Doc_Converter()
-    converter.read_json(data)._observed_data()
+    res = converter.read_json(data).clean_data()
     
     # result = converter.get_cleansed()
     # print(result['elements'][0])
