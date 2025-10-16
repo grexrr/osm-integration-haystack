@@ -54,7 +54,7 @@ class OverpassClient:
     def save_file(
             self, 
             data,
-            path:str ="src/osm_integration_haystack/clients/test_output.json",
+            path:str ="examples/test_output_json/test_output.json",
             mode = "w"
             ):
         with open(path, mode) as f:
@@ -66,10 +66,13 @@ if __name__ == "__main__":
     lat_user, lon_user, radius = 51.898403, -8.473978, 200
 
     tags = [
-    ("shop", "alcohol"),
-    ("service", "yard"),
+    ("shop",),
+    ("service",),
     ("tourism",),
-    ("amenity",)
+    ("amenity",),
+    ("emergency",),
+    ("building",),
+    ("healthcare")
     ]
     
     types = ["node"]
