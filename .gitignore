@@ -185,4 +185,4 @@ plan_*.md
 plan_general.md
 plan_mvp.md
 examples/test_output_json/*
-temp_output.json
+temp_output.jsontest.py
