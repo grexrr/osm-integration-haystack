@@ -23,6 +23,7 @@
 
 from ast import List, Tuple
 from collections import Counter
+import re
 from typing import Any, Dict
 import json
 from unicodedata import category
@@ -52,7 +53,8 @@ class OSM_Doc_Converter:
     def __init__(self) -> None:
         self.raw = None
         self.raw_length = 0
-        self.tag_freq = Counter()        
+        self.tag_freq = Counter()   
+        self.top_set = set()     
         self.cleansed = {}
     
     # ================ Load Data ================ 
@@ -68,6 +70,7 @@ class OSM_Doc_Converter:
                 raise Exception("[OSM_Doc_Converter] No 'elements' found in the data.")
 
             self.tag_freq.update(f"{k}" for element in elements for k, _ in element.get("tags", {}).items())
+            self.top_set = set(self.get_top_n_tags(50))
 
         except Exception as e:
             raise Exception(f"[OSM_Doc_Converter] Error loading data: {e}")
@@ -87,20 +90,18 @@ class OSM_Doc_Converter:
         if "type" not in element or "id" not in element or ("lat" or "lon") not in element:
             return
         
-        result = {
+        res = {
             "meta": {
-                "tags_norm": {},
-                "tags": {}
             }
         }
 
         # ================ Processing ================ 
 
-        result["meta"]["source"] = "openstreetmap"
-        result["meta"]["osm_id"] = element["id"]
-        result["meta"]["osm_type"] = element["type"]
-        result["meta"]["lat"] = element["lat"]
-        result["meta"]["lon"] = element["lon"]
+        res["meta"]["source"] = "openstreetmap"
+        res["meta"]["osm_id"] = element["id"]
+        res["meta"]["osm_type"] = element["type"]
+        res["meta"]["lat"] = element["lat"]
+        res["meta"]["lon"] = element["lon"]
         
         # Processing Name Field
         processed_tags = set()
@@ -114,14 +115,14 @@ class OSM_Doc_Converter:
                 else:
                     name_str = element["tags"][category]
                     processed_tags.add(category)
-                result["meta"]["name"] = name_str
+                res["meta"]["name"] = name_str
                 
                 if category == "emergency":
                     category_str = category
                 else:
                     category_str = element["tags"][category]
 
-                result["meta"]["category"] = category_str
+                res["meta"]["category"] = category_str
                 if name_str == category_str:
                     name_field = f"{category_str.capitalize()}"
                 else:
@@ -136,51 +137,71 @@ class OSM_Doc_Converter:
         # Processing Address Field
         address_field = ""
         hours_field = ""
+        
+        addr_map = {}
         for tag in element["tags"]:
 
-            if tag not in self.get_top_n_tags(25):
+            if tag not in self.top_set:
+                continue
+            
+            val = element["tags"][tag]
+            if val in (None, "", []):
                 continue
 
             if tag.startswith("addr:"):
                 
-                # "addr:housenumber": "74"
-                # tag: "addr:housenumber"
-                # addr_val: 74
-                # addr_type: housenumber
-                addr_val = element["tags"][tag]
-                addr_type = tag.split(":")[1]
+                addr_type = tag.split(":", 1)[1]
+                addr_map[addr_type] = val
                 
-                address_field += f"{addr_val} "
                 
-                if "address" not in result["meta"]:
-                    result["meta"]["address"] = {}
-                result["meta"]["address"][addr_type] = addr_val
+                if "address" not in res["meta"]:
+                    res["meta"]["address"] = {}
+                res["meta"]["address"][addr_type] = val
                 processed_tags.add(tag)
             
             elif tag == "opening_hours":
-                hours = element["tags"]["opening_hours"]
-                hours_field = f"{hours}"
+                hours_field = f"{val}"
+
+                if "tags" not in res["meta"]:
+                    res["meta"]["tags"] = {}
+                if "tags_norm" not in res["meta"]:
+                    res["meta"]["tags_norm"] = {}
+
+                res["meta"]["tags"][tag] = val
+                res["meta"]["tags_norm"][self._norm_key(tag)] = self._norm_val(val)
+                processed_tags.add(tag)
                 
             else:
                 # Processing the rest
-                if tag not in processed_tags:
-                    result["meta"]["tags"][tag] = element["tags"][tag]
-                    if ":" in tag:
-                        k = tag.split(":")
-                        norm_key = f"{k[0]}_{k[1]}"
-                    else:
-                        norm_key = tag
-                    result["meta"]["tags_norm"][norm_key] = element["tags"][tag]
-                    processed_tags.add(tag)
-        
-        parts = [name_field, address_field, hours_field]
-        parts = [part for part in parts if part.strip()]  
-        content_str = ", ".join(parts)
-        result["content"] = content_str
+                if tag in processed_tags:
+                    continue
+                if "tags" not in res["meta"]:
+                    res["meta"]["tags"] = {}
+                if "tags_norm" not in res["meta"]:
+                    res["meta"]["tags_norm"] = {}
 
-        # ================ Processing Meta ================ 
-        # print(result)
-        self.cleansed[element["id"]] = result
+                res["meta"]["tags"][tag] = val
+                res["meta"]["tags_norm"][self._norm_key(tag)] = self._norm_val(val)
+                processed_tags.add(tag)
+
+        addr_obj = res["meta"].get("address", {})
+        if addr_obj:
+            addr_order = ["street", "housenumber", "city", "postcode"]
+            addr_parts = [addr_obj[k] for k in addr_order if k in addr_obj]
+            address_field = ", ".join(addr_parts)
+
+        parts = [p for p in [name_field, address_field] if p]
+        content = ", ".join(parts) if parts else ""
+
+        tags_bits = []
+        if hours_field:
+            tags_bits.append(f"opening_hours={hours_field}")
+        if tags_bits:
+            res["content"] = (content + ". " if content else "") + "Tags: " + ", ".join(tags_bits)
+        else:
+            res["content"] = content + ("." if content else "")
+
+        self.cleansed[element["id"]] = res
 
 
     # ================ Read Stats ================ 
@@ -192,8 +213,15 @@ class OSM_Doc_Converter:
         k = re.sub(r"_+", "_", k).strip("_")
         return k
 
-    def norm_val(v):
-        return v.strip() if isinstance(v, str) else v
+    def _norm_val(self, v):
+        if isinstance(v, str):
+            v = v.strip()
+            if v.lower() == "yes":
+                return True
+            elif v.lower() == "no":
+                return False
+            return v
+        return v
 
     def get_raw(self) -> Dict:
         return self.raw
@@ -240,5 +268,5 @@ if __name__ == "__main__":
     res = converter.cleansed
     with open("temp_output.json", "w") as f:
         json.dump(res, f, indent=2)
-    # result = converter.get_cleansed()
-    # print(result['elements'][0])
+    # res = converter.get_cleansed()
+    # print(res['elements'][0])
