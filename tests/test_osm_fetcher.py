@@ -1,18 +1,18 @@
 import unittest
-from osm_integration_haystack.osm_fetcher import OSMFetcher
+from osm_integration_haystack import OSMFetcher
 
-class Test_OSM_Fetcher(unittest.TestCase):
+class TestOSMFetcher(unittest.TestCase):
     
     def setUp(self):
         self.center = (51.898403, -8.473978)
         self.radius = 200
-        self.maximum_query_size = 100  # 修复：赋值
-        self.overpass_timeout = 25      # 修复：赋值
+        self.maximum_query_size = 100  
+        self.overpass_timeout = 25      
 
     def test_normalize_osm_types(self):
         fetcher = OSMFetcher(
-            preset_center=self.center,      # 修复：使用正确的参数名
-            preset_radius_m=self.radius,    # 修复：使用正确的参数名
+            preset_center=self.center,     
+            preset_radius_m=self.radius,    
             maximum_query_size=self.maximum_query_size,
             overpass_timeout=self.overpass_timeout
         )

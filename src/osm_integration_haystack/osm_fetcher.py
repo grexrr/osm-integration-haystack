@@ -3,7 +3,7 @@ from locale import normalize
 from typing import List, Dict, Optional, Tuple, Union
 from haystack import Document, component
 
-from osm_integration_haystack.clients.overpass_client import OverpassClient
+from osm_integration_haystack.overpass_client import OverpassClient
 
 @component
 class OSMFetcher:
