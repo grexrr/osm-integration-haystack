@@ -35,15 +35,20 @@ from numpy import add
 class OSM_Doc_Converter:
 
     WHITELIST_TAGS_PRIORITY = [
-        # "aerialway", "aeroway", 
         "emergency",
+        "healthcare",
         "amenity",
         "shop",
         "tourism",
         "building", 
         "craft",
-        
-        # "barrier", "boundary",
+        "geological",
+        "highway",
+        "cycleway",
+        "aerialway",
+        "aeroway",
+        "barrier",
+        "boundary"
     ]
 
     CORE_TAGS = {
@@ -95,17 +100,16 @@ class OSM_Doc_Converter:
             }
         }
 
-        # ================ Processing ================ 
-
         res["meta"]["source"] = "openstreetmap"
         res["meta"]["osm_id"] = element["id"]
         res["meta"]["osm_type"] = element["type"]
         res["meta"]["lat"] = element["lat"]
         res["meta"]["lon"] = element["lon"]
         
-        # Processing Name Field
-        processed_tags = set()
+        
+        processed_tags = set() 
 
+        # Processing Name Field
         name_field = None
         for category in self.WHITELIST_TAGS_PRIORITY:
             if category in element["tags"]:
@@ -128,13 +132,7 @@ class OSM_Doc_Converter:
                 else:
                     name_field = f"{category_str.capitalize()}: {name_str}"
                 break
-        
-        # if not processed_tags:
-        #     print(element["id"])
-        # else:
-        #     print(processed_tags)
 
-        # Processing Address Field
         address_field = ""
         hours_field = ""
         
@@ -148,8 +146,14 @@ class OSM_Doc_Converter:
             if val in (None, "", []):
                 continue
 
+            if "tags" not in res["meta"]:
+                res["meta"]["tags"] = {}
+            if "tags_norm" not in res["meta"]:
+                res["meta"]["tags_norm"] = {}
+
             if tag.startswith("addr:"):
                 
+                # Processing Addr: Field
                 addr_type = tag.split(":", 1)[1]
                 addr_map[addr_type] = val
                 
@@ -160,13 +164,8 @@ class OSM_Doc_Converter:
                 processed_tags.add(tag)
             
             elif tag == "opening_hours":
+                # Processing opening_hour field
                 hours_field = f"{val}"
-
-                if "tags" not in res["meta"]:
-                    res["meta"]["tags"] = {}
-                if "tags_norm" not in res["meta"]:
-                    res["meta"]["tags_norm"] = {}
-
                 res["meta"]["tags"][tag] = val
                 res["meta"]["tags_norm"][self._norm_key(tag)] = self._norm_val(val)
                 processed_tags.add(tag)
@@ -175,10 +174,6 @@ class OSM_Doc_Converter:
                 # Processing the rest
                 if tag in processed_tags:
                     continue
-                if "tags" not in res["meta"]:
-                    res["meta"]["tags"] = {}
-                if "tags_norm" not in res["meta"]:
-                    res["meta"]["tags_norm"] = {}
 
                 res["meta"]["tags"][tag] = val
                 res["meta"]["tags_norm"][self._norm_key(tag)] = self._norm_val(val)
@@ -204,7 +199,7 @@ class OSM_Doc_Converter:
         self.cleansed[element["id"]] = res
 
 
-    # ================ Read Stats ================ 
+    # ================ tools ======s========== 
 
     def _norm_key(self, k: str) -> str:
         import re
