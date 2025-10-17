@@ -122,6 +122,57 @@ result = pipeline.run({
 print(result["llm_generator"]["replies"][0])
 ```
 
+### GeoRadiusFilter
+
+The `GeoRadiusFilter` component provides additional geographic filtering capabilities for OSM documents. It's designed to help agents decide whether to perform further filtering based on distance criteria.
+
+```python
+from osm_integration_haystack import OSMFetcher
+from osm_integration_haystack.utils import GeoRadiusFilter
+
+# First, fetch OSM data
+osm_fetcher = OSMFetcher(
+    preset_center=(51.898403, -8.473978),
+    preset_radius_m=1000,  # Large initial radius
+    target_osm_types=["node"],
+    target_osm_tags=["amenity"]
+)
+
+# Get all nearby locations
+results = osm_fetcher.run()
+all_documents = results["documents"]
+
+# Then apply additional radius filtering
+geo_filter = GeoRadiusFilter(max_radius_m=500)  # Limit to 500m
+
+filtered_results = geo_filter.run(
+    documents=all_documents,
+    center=(51.898403, -8.473978),  # Same center
+    radius_m=300  # Filter to 300m radius
+)
+
+filtered_documents = filtered_results["documents"]
+print(f"Filtered from {len(all_documents)} to {len(filtered_documents)} documents")
+```
+
+**Use Cases:**
+- **Agent Decision Making**: Help AI agents decide whether to apply additional geographic filtering
+- **Multi-stage Filtering**: First fetch a large area, then filter to smaller specific regions
+- **Dynamic Radius Adjustment**: Allow agents to adjust search radius based on initial results
+- **Distance-based Ranking**: Ensure all returned documents are within a specific distance threshold
+
+**Configuration Parameters:**
+- `max_radius_m (int)`: Maximum allowed radius in meters (default: 5000)
+- `center (Tuple[float, float])`: Center coordinates for distance calculation
+- `radius_m (int)`: Target radius for filtering
+
+**Features:**
+- **Distance Calculation**: Uses Haversine formula for accurate geographic distance
+- **Automatic Sorting**: Returns documents sorted by distance from center
+- **Validation**: Validates coordinate ranges and radius values
+- **Flexible Input**: Works with any list of Haystack Documents containing lat/lon metadata
+
+
 ## Configuration Parameters
 
 The `OSMFetcher` component accepts several parameters to customize its behavior:
