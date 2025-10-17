@@ -1,9 +1,7 @@
 from collections import Counter
-from typing import Any, Dict, List, Tuple
-import json
+from typing import Dict
 
-
-class OSM_Doc_Converter:
+class DocConverter:
 
     WHITELIST_TAGS_PRIORITY = [
         "emergency",
@@ -21,10 +19,6 @@ class OSM_Doc_Converter:
         "barrier",
         "boundary"
     ]
-
-    CORE_TAGS = {
-        
-    }
 
     def __init__(self) -> None:
         self.raw = None
@@ -196,7 +190,6 @@ class OSM_Doc_Converter:
         return self.cleansed
 
     def get_tag_freq(self, num:int=None) -> None:
-        print("[OSM_Doc_Converter] Most common tags:")
         if not num:
             print(self.tag_freq.most_common())
         else:
@@ -206,33 +199,33 @@ class OSM_Doc_Converter:
     def get_top_n_tags(self, n):
         return set(tag for tag, _ in self.tag_freq.most_common(n))
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
 
-    # load testing data
-    import json
-    import os
+#     # load testing data
+#     import json
+#     import os
 
-    file_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "test_output_json", "test_output.json")
-    with open(file_path, "r") as f:
-        data = json.load(f)
+#     file_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "test_output_json", "test_output.json")
+#     with open(file_path, "r") as f:
+#         data = json.load(f)
 
-    #read tags
-    # tags = set()
-    # elements = data["elements"]
-    # for element in elements:
-    #     tags.update(element["tags"])
-    # print(tags)
+#     #read tags
+#     # tags = set()
+#     # elements = data["elements"]
+#     # for element in elements:
+#     #     tags.update(element["tags"])
+#     # print(tags)
 
-    # start cleaning
-    converter = OSM_Doc_Converter()
-    res = converter.read_json(data).get_tag_freq(20)
+#     # start cleaning
+#     converter = OSM_Doc_Converter()
+#     res = converter.read_json(data).get_tag_freq(20)
 
 
-    # 过程json
-    converter.read_json(data).clean_data()
-    res = converter.cleansed
-    with open("temp_output.json", "w") as f:
-        json.dump(res, f, indent=2)
-    # res = converter.get_cleansed()
-    # print(res['elements'][0])
+#     # 过程json
+#     converter.read_json(data).clean_data()
+#     res = converter.cleansed
+#     with open("temp_output.json", "w") as f:
+#         json.dump(res, f, indent=2)
+#     # res = converter.get_cleansed()
+#     # print(res['elements'][0])

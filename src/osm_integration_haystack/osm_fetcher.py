@@ -3,7 +3,9 @@ from locale import normalize
 from typing import List, Dict, Optional, Tuple, Union
 from haystack import Document, component
 
-from osm_integration_haystack.overpass_client import OverpassClient
+from .overpass_client import OverpassClient
+from .osm_doc_converter import DocConverter
+from .utils.geo_utils import GeoRadiusFilter
 
 @component
 class OSMFetcher:
@@ -14,41 +16,59 @@ class OSMFetcher:
         preset_radius_m: Optional[int] = None,
         target_osm_types: Optional[Union[str, List[str]]] = None,
         target_osm_tags: Optional[Union[str, List[str]]] = None,
-        maximum_query_size: Optional[int] = 1000000,
+        maximum_query_mb: Optional[int] = 5,
         overpass_timeout: Optional[int] = 25
     ):
         self.preset_center = preset_center
         self.preset_radius_m = preset_radius_m
         self.target_osm_types = self._normalize_osm_types(target_osm_types) if target_osm_types else ['node', 'way', 'relation']
         self.target_osm_tags = self._normalize_osm_tags(target_osm_tags) if target_osm_tags else None
-        self.maximum_query_size = maximum_query_size
+        self.maximum_query_mb = maximum_query_mb
         self.timeout = overpass_timeout
 
 
     @component.output_types(documents=List[Document])
-    def run(
-        self,
-        center: Optional[Tuple[float, float]] = None,
-        radius_m: Optional[int] = None,
-    ) -> Dict[str, List[Document]]:
+    def run(self, center: Optional[Tuple[float, float]] = None, radius_m: Optional[int] = None,) -> Dict[str, List[Document]]:
 
         ctr = center or self.preset_center
         rad = radius_m or self.preset_radius_m
         if ctr is None or rad is None:
-            raise ValueError("center/radius_m 未提供：请在 __init__ 设默认，或在 run() 传入。")
+            raise ValueError("center/radius_m not provided: please set defaults in __init__ or pass them in run().")
 
         docs = self._fetch_by_radius(ctr, rad)
         return {"documents": docs}
 
-    # 内部工具：你说的 fetchbyradius
+    # 内部工具：fetchbyradius
     def _fetch_by_radius(self, center: Tuple[float, float], radius_m: int) -> List[Document]:
         # 1) OverpassClient 拉 JSON
-        # lat_user, lon_user = center[0], center[1]
-        # client = OverpassClient(self.timeout, self.maximum_query_size)
+        client = OverpassClient(
+            center=center,
+            radius_m=radius_m,
+            target_types=self.target_osm_types,
+            target_tags=self.target_osm_tags,
+            maxsize_mb= self.maximum_query_mb,
+            timeout=self.timeout
+            )
+        raw_data = client.fetch_osm_data()
+        
 
-        # 2) Converter 转 content/meta + 计算 distance_m（相对 center）
-        # 3) 包成 List[Document] 返回
-        ...
+        converter = DocConverter()
+        converter.read_json(raw_data).clean_data()
+        cleansed = converter.cleansed
+
+        documents = []
+        for _, entry in cleansed.items():
+            # 2) Converter 转 content/meta + 计算 distance_m（相对 center）
+            dist = GeoRadiusFilter.haversine_distance(center, (entry["meta"]["lat"], entry["meta"]["lon"]))
+            entry["meta"]["distance_m"] = dist
+            # 3) 包成 List[Document] 返回
+            doc = Document(
+                content=entry["content"],
+                meta=entry["meta"]
+            )
+            documents.append(doc)
+            documents.sort(key=lambda d: d.meta.get("distance_m", float("inf")))
+        return documents
 
     def _normalize_osm_types(self, target_osm_types:Optional[Union[str, List[str]]]) -> List[str]:
         valid_osm_types = {'node', 'way', 'relation'}

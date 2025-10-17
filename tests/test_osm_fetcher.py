@@ -27,7 +27,9 @@ class TestOSMFetcher(unittest.TestCase):
         self.assertEqual(set(result), {"node", "way", "relation"})
         self.assertEqual(len(result), 3)
         
-
+    def test_fetch_by_radius(self):
+        return 
+    
 if __name__ == "__main__":
     unittest.main()
 
