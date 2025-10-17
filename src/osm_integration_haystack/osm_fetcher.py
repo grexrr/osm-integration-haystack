@@ -1,5 +1,3 @@
-from http import client
-from locale import normalize
 from typing import List, Dict, Optional, Tuple, Union
 from haystack import Document, component
 
@@ -17,6 +15,7 @@ class OSMFetcher:
         target_osm_types: Optional[Union[str, List[str]]] = None,
         target_osm_tags: Optional[Union[str, List[str]]] = None,
         maximum_query_mb: Optional[int] = 5,
+        max_token:int = 12000,
         overpass_timeout: Optional[int] = 25
     ):
         self.preset_center = preset_center
@@ -24,6 +23,7 @@ class OSMFetcher:
         self.target_osm_types = self._normalize_osm_types(target_osm_types) if target_osm_types else ['node', 'way', 'relation']
         self.target_osm_tags = self._normalize_osm_tags(target_osm_tags) if target_osm_tags else None
         self.maximum_query_mb = maximum_query_mb
+        self.max_token = max_token
         self.timeout = overpass_timeout
 
 
@@ -57,6 +57,7 @@ class OSMFetcher:
         cleansed = converter.cleansed
 
         documents = []
+        curr_token = 0
         for _, entry in cleansed.items():
             # 2) Converter 转 content/meta + 计算 distance_m（相对 center）
             dist = GeoRadiusFilter.haversine_distance(center, (entry["meta"]["lat"], entry["meta"]["lon"]))
@@ -66,8 +67,11 @@ class OSMFetcher:
                 content=entry["content"],
                 meta=entry["meta"]
             )
+
+            # doc_tokens = len(entry["content"]) // 4 + len(str(entry["meta"])) // 4
             documents.append(doc)
-            documents.sort(key=lambda d: d.meta.get("distance_m", float("inf")))
+
+        documents.sort(key=lambda d: d.meta.get("distance_m", float("inf")))
         return documents
 
     def _normalize_osm_types(self, target_osm_types:Optional[Union[str, List[str]]]) -> List[str]:

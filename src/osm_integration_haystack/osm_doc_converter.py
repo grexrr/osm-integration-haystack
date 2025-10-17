@@ -198,34 +198,3 @@ class DocConverter:
 
     def get_top_n_tags(self, n):
         return set(tag for tag, _ in self.tag_freq.most_common(n))
-
-# if __name__ == "__main__":
-
-
-#     # load testing data
-#     import json
-#     import os
-
-#     file_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "test_output_json", "test_output.json")
-#     with open(file_path, "r") as f:
-#         data = json.load(f)
-
-#     #read tags
-#     # tags = set()
-#     # elements = data["elements"]
-#     # for element in elements:
-#     #     tags.update(element["tags"])
-#     # print(tags)
-
-#     # start cleaning
-#     converter = OSM_Doc_Converter()
-#     res = converter.read_json(data).get_tag_freq(20)
-
-
-#     # 过程json
-#     converter.read_json(data).clean_data()
-#     res = converter.cleansed
-#     with open("temp_output.json", "w") as f:
-#         json.dump(res, f, indent=2)
-#     # res = converter.get_cleansed()
-#     # print(res['elements'][0])

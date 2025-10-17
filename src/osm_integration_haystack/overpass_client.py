@@ -1,5 +1,4 @@
-from typing import List, Dict, Optional, Tuple, Union
-import time
+from typing import List, Tuple
 import json
 import requests
 
@@ -46,6 +45,8 @@ class OverpassClient:
         
         print(f"Status: {res.status_code}")
         print(f"Response: {res.text[:200]}...")
+        if res.status_code != 200:
+            raise Exception(f"Overpass API error {res.status_code}: {res.text}")
         
         return res.text
 
