@@ -192,6 +192,7 @@ class TestOSMFetcherTokenBudget(unittest.TestCase):
             meta={
                 "lat": 51.9, "lon": -8.4, "distance_m": 10.0,
                 "name": "Test Cafe", "category": "cafe",
+                "address": {"street": "Main St", "city": "Cork"},
                 "tags": {"amenity": "cafe"}, "tags_norm": {"amenity": "cafe"},
                 "osm_id": 123, "osm_type": "node", "source": "openstreetmap",
             }
@@ -202,7 +203,7 @@ class TestOSMFetcherTokenBudget(unittest.TestCase):
         result = fetcher._slim_documents([doc])
         self.assertEqual(
             set(result[0].meta.keys()),
-            {"lat", "lon", "distance_m", "name", "category"},
+            {"lat", "lon", "distance_m", "name", "category", "address"},
         )
 
     def test_slim_output_truncates_long_content(self):
@@ -216,7 +217,7 @@ class TestOSMFetcherTokenBudget(unittest.TestCase):
         result = fetcher._slim_documents([doc])
         self.assertLessEqual(len(result[0].content), 300)
 
-    def test_slim_output_false_leaves_meta_unchanged(self):
+    def test_budget_does_not_strip_meta_when_within_limit(self):
         doc = Document(
             content="cafe",
             meta={
@@ -231,6 +232,33 @@ class TestOSMFetcherTokenBudget(unittest.TestCase):
         result = fetcher._apply_token_budget([doc])
         self.assertIn("tags", result[0].meta)
         self.assertIn("osm_id", result[0].meta)
+
+    def test_slim_output_with_over_budget_drops_farthest(self):
+        fetcher = OSMFetcher(
+            preset_center=(51.9, -8.4),
+            preset_radius_m=200,
+            slim_output=True,
+            max_token=150,
+        )
+        docs = [
+            Document(
+                content="X" * 400,
+                meta={"lat": 51.9, "lon": -8.4, "distance_m": 10.0,
+                      "name": "A", "tags": {"amenity": "cafe"}},
+            ),
+            Document(
+                content="X" * 400,
+                meta={"lat": 51.9, "lon": -8.4, "distance_m": 20.0,
+                      "name": "B", "tags": {"amenity": "pub"}},
+            ),
+        ]
+        # slim first: meta reduced to slim fields, content truncated to 300
+        slimmed = fetcher._slim_documents(docs)
+        # then budget: max_token=150 means only 1 doc fits
+        result = fetcher._apply_token_budget(slimmed)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].meta["distance_m"], 10.0)
+        self.assertNotIn("tags", result[0].meta)
 
 
 if __name__ == "__main__":
