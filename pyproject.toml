@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "osm-integration-haystack"
-version = '0.1.10'
+version = '0.1.11'
 description = "A Haystack component integrating Overpass API for OpenStreetMap"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -300,6 +300,21 @@ class TestOSMDocConverter(unittest.TestCase):
         
         print(f"[Test][OSM Converter] Verification: tag counts are correct")
     
+    def test_element_without_tags_is_skipped(self):
+        print("[Test][OSM Converter] Element Without Tags Skipped")
+        data = {
+            "elements": [
+                {"type": "node", "id": 1, "lat": 51.9, "lon": -8.4},
+                {"type": "node", "id": 2, "lat": 51.9, "lon": -8.4, "tags": {}},
+                {"type": "node", "id": 3, "lat": 51.9, "lon": -8.4, "tags": {"amenity": "cafe", "name": "Test Cafe"}},
+            ]
+        }
+        converter = DocConverter()
+        converter.read_json(data).clean_data()
+        self.assertNotIn(1, converter.cleansed)
+        self.assertNotIn(2, converter.cleansed)
+        self.assertIn(3, converter.cleansed)
+
     def test_content_generation(self):
         print("[Test][OSM Converter] Content Generation")
         self.converter.read_json(self.test_data)

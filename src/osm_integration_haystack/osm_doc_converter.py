@@ -56,10 +56,14 @@ class DocConverter:
         return self
 
     def _clean_element(self, element) -> None:
-        
-        if "type" not in element or "id" not in element or ("lat" or "lon") not in element:
+
+        if "type" not in element or "id" not in element or "lat" not in element or "lon" not in element:
             return
-        
+
+        tags = element.get("tags", {})
+        if not tags:
+            return
+
         res = {
             "meta": {
             }
@@ -70,26 +74,26 @@ class DocConverter:
         res["meta"]["osm_type"] = element["type"]
         res["meta"]["lat"] = element["lat"]
         res["meta"]["lon"] = element["lon"]
-        
-        
-        processed_tags = set() 
+
+
+        processed_tags = set()
 
         # Processing Name Field
         name_field = None
         for category in self.WHITELIST_TAGS_PRIORITY:
-            if category in element["tags"]:
-                if "name" in element["tags"]:
-                    name_str = element["tags"]["name"]
+            if category in tags:
+                if "name" in tags:
+                    name_str = tags["name"]
                     processed_tags.add("name")
                 else:
-                    name_str = element["tags"][category]
+                    name_str = tags[category]
                     processed_tags.add(category)
                 res["meta"]["name"] = name_str
-                
+
                 if category == "emergency":
                     category_str = category
                 else:
-                    category_str = element["tags"][category]
+                    category_str = tags[category]
 
                 res["meta"]["category"] = category_str
                 if name_str == category_str:
@@ -100,14 +104,14 @@ class DocConverter:
 
         address_field = ""
         hours_field = ""
-        
+
         addr_map = {}
-        for tag in element["tags"]:
+        for tag in tags:
 
             if tag not in self.top_set:
                 continue
-            
-            val = element["tags"][tag]
+
+            val = tags[tag]
             if val in (None, "", []):
                 continue
 
