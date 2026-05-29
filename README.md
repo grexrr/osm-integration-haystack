@@ -172,6 +172,30 @@ print(f"Filtered from {len(all_documents)} to {len(filtered_documents)} document
 - **Validation**: Validates coordinate ranges and radius values
 - **Flexible Input**: Works with any list of Haystack Documents containing lat/lon metadata
 
+### Agent-Friendly Lite Mode (`slim_output`)
+
+When `OSMFetcher` is used as a `ComponentTool` inside a Haystack Agent, the full document output is serialised as a tool message and forwarded to the LLM. For dense urban areas this can easily exceed the model's context window.
+
+Set `slim_output=True` to compress each document to only the fields an LLM needs for reasoning (`name`, `category`, `lat`, `lon`, `distance_m`, `address`). The token budget (`max_token`) still applies on top — if the slim documents collectively exceed the budget, the farthest ones are dropped.
+
+```python
+from osm_integration_haystack import OSMFetcher
+
+fetcher = OSMFetcher(
+    preset_center=(51.898403, -8.473978),
+    preset_radius_m=500,
+    target_osm_types=["node"],
+    target_osm_tags=["amenity", "tourism", "leisure"],
+    slim_output=True,   # compact output safe for Agent tool-calling
+    max_token=12000,    # drop farthest POIs if still over budget
+)
+
+results = fetcher.run()
+documents = results["documents"]
+# Each document now contains only: name, category, lat, lon, distance_m, address
+```
+
+`slim_output=False` (default) preserves the existing full-metadata behaviour for standard RAG pipelines.
 
 ## Configuration Parameters
 
@@ -183,6 +207,7 @@ The `OSMFetcher` component accepts several parameters to customize its behavior:
 - `target_osm_tags (Union[str, List[str]], optional)`: OSM tags to filter by (e.g., ["amenity", "shop"]). Default: None (all tags).
 - `maximum_query_mb (int, optional)`: Maximum query size in MB to prevent API timeouts. Default: 5.
 - `overpass_timeout (int, optional)`: Timeout for Overpass API requests in seconds. Default: 25.
+- `slim_output (bool, optional)`: When `True`, compresses each returned Document to only the fields essential for LLM reasoning (`name`, `category`, `lat`, `lon`, `distance_m`, `address`) and truncates content to 300 characters. Use in Agent / `ComponentTool` workflows to stay within model context limits. Default: `False`.
 
 ### Document Structure
 
