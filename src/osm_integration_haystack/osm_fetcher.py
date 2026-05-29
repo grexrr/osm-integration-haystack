@@ -5,6 +5,8 @@ from .overpass_client import OverpassClient
 from .osm_doc_converter import DocConverter
 from .utils.geo_utils import GeoRadiusFilter
 
+_SLIM_META_FIELDS = {"name", "category", "lat", "lon", "distance_m", "address"}
+
 @component
 class OSMFetcher:
     
@@ -16,6 +18,7 @@ class OSMFetcher:
         target_osm_tags: Optional[Union[str, List[str]]] = None,
         maximum_query_mb: Optional[int] = 5,
         max_token:int = 12000,
+        slim_output: bool = False,
         overpass_timeout: Optional[int] = 25
     ):
         self.preset_center = preset_center
@@ -24,6 +27,7 @@ class OSMFetcher:
         self.target_osm_tags = self._normalize_osm_tags(target_osm_tags) if target_osm_tags else None
         self.maximum_query_mb = maximum_query_mb
         self.max_token = max_token
+        self.slim_output = slim_output
         self.timeout = overpass_timeout
 
 
@@ -73,9 +77,18 @@ class OSMFetcher:
 
         documents.sort(key=lambda d: d.meta.get("distance_m", float("inf")))
 
+        if self.slim_output:
+            documents = self._slim_documents(documents)
         if self.max_token:
             documents = self._apply_token_budget(documents)
 
+        return documents
+
+    def _slim_documents(self, documents: List[Document]) -> List[Document]:
+        for doc in documents:
+            doc.meta = {k: v for k, v in doc.meta.items() if k in _SLIM_META_FIELDS}
+            if len(doc.content) > 300:
+                doc.content = doc.content[:300]
         return documents
 
     def _apply_token_budget(self, documents: List[Document]) -> List[Document]:

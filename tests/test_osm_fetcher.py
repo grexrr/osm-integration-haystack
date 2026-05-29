@@ -186,5 +186,52 @@ class TestOSMFetcherTokenBudget(unittest.TestCase):
         self.assertEqual(result[0].meta["distance_m"], 10.0)
 
 
+    def test_slim_output_keeps_only_essential_fields(self):
+        doc = Document(
+            content="cafe",
+            meta={
+                "lat": 51.9, "lon": -8.4, "distance_m": 10.0,
+                "name": "Test Cafe", "category": "cafe",
+                "tags": {"amenity": "cafe"}, "tags_norm": {"amenity": "cafe"},
+                "osm_id": 123, "osm_type": "node", "source": "openstreetmap",
+            }
+        )
+        fetcher = OSMFetcher(
+            preset_center=(51.9, -8.4), preset_radius_m=200, slim_output=True
+        )
+        result = fetcher._slim_documents([doc])
+        self.assertEqual(
+            set(result[0].meta.keys()),
+            {"lat", "lon", "distance_m", "name", "category"},
+        )
+
+    def test_slim_output_truncates_long_content(self):
+        doc = Document(
+            content="X" * 500,
+            meta={"lat": 51.9, "lon": -8.4, "distance_m": 10.0},
+        )
+        fetcher = OSMFetcher(
+            preset_center=(51.9, -8.4), preset_radius_m=200, slim_output=True
+        )
+        result = fetcher._slim_documents([doc])
+        self.assertLessEqual(len(result[0].content), 300)
+
+    def test_slim_output_false_leaves_meta_unchanged(self):
+        doc = Document(
+            content="cafe",
+            meta={
+                "lat": 51.9, "lon": -8.4, "distance_m": 10.0,
+                "name": "Test Cafe", "tags": {"amenity": "cafe"}, "osm_id": 123,
+            },
+        )
+        fetcher = OSMFetcher(
+            preset_center=(51.9, -8.4), preset_radius_m=200,
+            slim_output=False, max_token=100000,
+        )
+        result = fetcher._apply_token_budget([doc])
+        self.assertIn("tags", result[0].meta)
+        self.assertIn("osm_id", result[0].meta)
+
+
 if __name__ == "__main__":
     unittest.main()
