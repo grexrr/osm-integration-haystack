@@ -7,27 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.12] - 2026-05-29
 
-### Added
-
-- `OSMFetcher` now enforces `max_token` with a two-phase progressive strategy
-  instead of silently ignoring the parameter. Phase 1 compresses each document
-  (removes `tags`/`tags_norm` from meta, truncates content to 300 chars). Phase 2
-  drops the farthest documents until the cumulative token estimate fits within the
-  budget. Documents within budget are returned untouched. This prevents
-  context-window overflows in Agent + `ComponentTool` scenarios (issue #2).
-
-## [0.1.11] - 2026-05-29
-
 ### Fixed
 
 - `DocConverter` no longer raises `KeyError('tags')` when processing elements
   returned by the Overpass API without a `tags` field. This happened whenever
-  `OSMFetcher` was used without `target_osm_tags` (i.e. querying all node types),
-  causing failures in Agent + `ComponentTool` scenarios. Elements without tags are
-  now silently skipped, as they carry no useful POI content.
-- Fixed a latent guard condition in `_clean_element` where `("lat" or "lon")`
-  short-circuited to only checking `"lat"`, leaving elements missing `"lon"`
-  undetected.
+  `OSMFetcher` was used without `target_osm_tags`, causing failures in Agent +
+  `ComponentTool` scenarios. Elements without tags are now silently skipped.
+- Fixed a guard condition in `_clean_element` where `("lat" or "lon")` only
+  checked `"lat"` due to Python short-circuit evaluation.
+
+### Added
+
+- `OSMFetcher` now enforces `max_token` with a two-phase progressive strategy.
+  Phase 1 compresses each document (removes `tags`/`tags_norm` from meta, truncates
+  content to 300 chars). Phase 2 drops the farthest documents until within budget.
+  Prevents context-window overflows in Agent + `ComponentTool` scenarios (issue #2).
 
 ## [0.1.10] - 2026-01-15
 
