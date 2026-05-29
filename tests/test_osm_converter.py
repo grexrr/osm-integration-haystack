@@ -300,6 +300,16 @@ class TestOSMDocConverter(unittest.TestCase):
         
         print(f"[Test][OSM Converter] Verification: tag counts are correct")
     
+    def test_empty_elements_response_returns_no_documents(self):
+        converter = DocConverter()
+        converter.read_json({"elements": []}).clean_data()
+        self.assertEqual(converter.cleansed, {})
+
+    def test_missing_elements_key_returns_no_documents(self):
+        converter = DocConverter()
+        converter.read_json({}).clean_data()
+        self.assertEqual(converter.cleansed, {})
+
     def test_element_without_tags_is_skipped(self):
         print("[Test][OSM Converter] Element Without Tags Skipped")
         data = {

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `DocConverter.read_json` no longer raises when the Overpass API returns a 200
+  response with no `elements` field or an empty `elements` list. Both cases now
+  produce an empty document list instead of crashing (issue #4).
 - `DocConverter` no longer raises `KeyError('tags')` when processing elements
   returned by the Overpass API without a `tags` field. This happened whenever
   `OSMFetcher` was used without `target_osm_tags`, causing failures in Agent +

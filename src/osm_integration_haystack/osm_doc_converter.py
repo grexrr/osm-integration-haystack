@@ -28,22 +28,17 @@ class DocConverter:
         self.cleansed = {}
     
     # ================ Load Data ================ 
-    def read_json(self, data:Dict) -> None:
-        try:
-            print("[OSM_Doc_Converter] Reading Raw OSM GeoJson...")
-            
-            if elements := data['elements']:
-                self.raw = elements
-                self.raw_length = len(elements)
-                print(f"[OSM_Doc_Converter] Loaded {self.raw_length} entries.")
-            else:
-                raise Exception("[OSM_Doc_Converter] No 'elements' found in the data.")
-
-            self.tag_freq.update(f"{k}" for element in elements for k, _ in element.get("tags", {}).items())
-            self.top_set = set(self.get_top_n_tags(50))
-
-        except Exception as e:
-            raise Exception(f"[OSM_Doc_Converter] Error loading data: {e}")
+    def read_json(self, data: Dict) -> 'DocConverter':
+        print("[OSM_Doc_Converter] Reading Raw OSM GeoJson...")
+        elements = data.get('elements', [])
+        self.raw = elements
+        self.raw_length = len(elements)
+        if not elements:
+            print("[OSM_Doc_Converter] No elements in response (empty area or query limit reached).")
+            return self
+        print(f"[OSM_Doc_Converter] Loaded {self.raw_length} entries.")
+        self.tag_freq.update(f"{k}" for element in elements for k, _ in element.get("tags", {}).items())
+        self.top_set = set(self.get_top_n_tags(50))
         return self
     
     # ================ Process ================ 
