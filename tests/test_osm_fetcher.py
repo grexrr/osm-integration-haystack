@@ -1,4 +1,5 @@
 import unittest
+from haystack import Document
 from osm_integration_haystack import OSMFetcher
 
 class TestOSMFetcher(unittest.TestCase):
@@ -134,5 +135,56 @@ class TestOSMFetcher(unittest.TestCase):
         print("测试完成")
         print("=" * 60)
     
+class TestOSMFetcherTokenBudget(unittest.TestCase):
+
+    def setUp(self):
+        self.fetcher = OSMFetcher(
+            preset_center=(51.9, -8.4),
+            preset_radius_m=200,
+            max_token=100000,
+        )
+
+    def _doc(self, content, distance_m, verbose_meta=False):
+        meta = {"lat": 51.9, "lon": -8.4, "distance_m": distance_m}
+        if verbose_meta:
+            meta["tags"] = {"amenity": "cafe"}
+            meta["tags_norm"] = {"amenity": "cafe"}
+        return Document(content=content, meta=meta)
+
+    def _tokens(self, doc):
+        return len(doc.content) // 4 + len(str(doc.meta)) // 4
+
+    def test_no_trim_when_within_budget(self):
+        docs = [self._doc("cafe", 10.0), self._doc("pub", 20.0)]
+        result = self.fetcher._apply_token_budget(docs)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].content, "cafe")
+        self.assertEqual(result[1].content, "pub")
+
+    def test_phase1_removes_verbose_meta_when_over_budget(self):
+        doc = self._doc("X" * 100, 10.0, verbose_meta=True)
+        self.fetcher.max_token = self._tokens(doc) - 1
+        result = self.fetcher._apply_token_budget([doc])
+        self.assertNotIn("tags", result[0].meta)
+        self.assertNotIn("tags_norm", result[0].meta)
+
+    def test_phase1_truncates_long_content_when_over_budget(self):
+        doc = self._doc("X" * 400, 10.0)
+        self.fetcher.max_token = self._tokens(doc) - 1
+        result = self.fetcher._apply_token_budget([doc])
+        self.assertLessEqual(len(result[0].content), 300)
+
+    def test_phase2_drops_farthest_when_still_over_budget_after_compression(self):
+        docs = [
+            self._doc("X" * 400, 10.0),
+            self._doc("X" * 400, 20.0),
+            self._doc("X" * 400, 30.0),
+        ]
+        self.fetcher.max_token = 100  # fits only 1 doc after compression
+        result = self.fetcher._apply_token_budget(docs)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].meta["distance_m"], 10.0)
+
+
 if __name__ == "__main__":
     unittest.main()

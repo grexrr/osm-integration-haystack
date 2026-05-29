@@ -72,7 +72,40 @@ class OSMFetcher:
             documents.append(doc)
 
         documents.sort(key=lambda d: d.meta.get("distance_m", float("inf")))
+
+        if self.max_token:
+            documents = self._apply_token_budget(documents)
+
         return documents
+
+    def _apply_token_budget(self, documents: List[Document]) -> List[Document]:
+        def estimate_tokens(doc: Document) -> int:
+            return len(doc.content) // 4 + len(str(doc.meta)) // 4
+
+        if sum(estimate_tokens(d) for d in documents) <= self.max_token:
+            return documents
+
+        # Phase 1: compress each document in place
+        for doc in documents:
+            doc.meta.pop("tags", None)
+            doc.meta.pop("tags_norm", None)
+            if len(doc.content) > 300:
+                doc.content = doc.content[:300]
+
+        if sum(estimate_tokens(d) for d in documents) <= self.max_token:
+            return documents
+
+        # Phase 2: drop farthest documents until within budget
+        kept = []
+        remaining = self.max_token
+        for doc in documents:
+            tokens = estimate_tokens(doc)
+            if tokens <= remaining:
+                kept.append(doc)
+                remaining -= tokens
+            else:
+                break
+        return kept
 
     def _normalize_osm_types(self, target_osm_types:Optional[Union[str, List[str]]]) -> List[str]:
         valid_osm_types = {'node', 'way', 'relation'}
